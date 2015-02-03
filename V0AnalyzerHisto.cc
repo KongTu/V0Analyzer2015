@@ -194,13 +194,11 @@ private:
   //TH1D* ks_res[15];
   //TH1D* la_res[15];
 
-  //TH2D* ks_pTeta;
-  //TH2D* la_pTeta;
-
-
   TH1D* multiDist;
   TH1D* etaDist;
-  TH1D* GENetaDist;
+  
+  //TH1D* ks_rpy;
+  //TH1D* la_rpy;
 
   TH1D* eventNumber;
 
@@ -312,7 +310,7 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   bestvzError = vtx.zError(); bestvxError = vtx.xError(); bestvyError = vtx.yError();
   
   //first selection; vertices
-    if(bestvz < -15.0 || bestvz>15.0) return;
+    if(bestvz < -15.0 || bestvz > 15.0) return;
 
     
   Handle<reco::TrackCollection> tracks;
@@ -365,6 +363,8 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     iEvent.getByLabel(generalV0_xi_,v0candidates_xi);
     if(!v0candidates_xi.isValid()) return;
 
+if(doGenParticle_){
+
   edm::Handle<reco::GenParticleCollection> genParticleCollection;
       iEvent.getByLabel(genParticleSrc_, genParticleCollection);
 
@@ -376,13 +376,19 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 
         double pt = genCand.pt();
         double eta = genCand.eta();
+        int status = genCand.status();
+        int charge = genCand.charge();
+
+
+        if( status != 1 ) continue;
+        if( charge == 0 ) continue;
 
         if(fabs(eta) > 2.4 || pt < 0.4 ) continue;
 
         genTracks++;
 
       }
- 
+}
 
 //multiplicity bins:
 //
@@ -408,8 +414,8 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
         int status = genCand.status();
         double genpt = genCand.pt();
         double geneta = genCand.eta();
-        double rpy_cm = 0.0;
-        rpy_cm = -genCand.rapidity()-0.47;
+        double rpy_lab = 0.0;
+        rpy_lab = genCand.rapidity();
 
       if ( geneta < -2.4 || geneta > 2.4 ) continue;
 
@@ -418,60 +424,61 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
        */
     
 
-      if ( status == 1 ){
+        if ( status == 1 ){
 
-        if( id == 310 ){
+          if( id == 310 ){
 
-            /*for(int i = 2; i < 15; i++){
+              /*for(int i = 2; i < 15; i++){
 
 
-              if( genCand.pt() > ptbins[i] && genCand.pt() < ptbins[i+1] ){
+                if( genCand.pt() > ptbins[i] && genCand.pt() < ptbins[i+1] ){
 
-                double temp = ks_res[i]->GetRandom();
-                double binNumber = ks_res[i]->FindBin(temp);
-                double shift = -0.3 + (binNumber*0.01);
+                  double temp = ks_res[i]->GetRandom();
+                  double binNumber = ks_res[i]->FindBin(temp);
+                  double shift = -0.3 + (binNumber*0.01);
 
-                genpt = genCand.pt() + shift;
-              }
+                  genpt = genCand.pt() + shift;
+                }
 
-            }*/
+              }*/
 
-            genKS_underlying->Fill(rpy_cm, genpt, genCand.mass(),weight);
-        }
+              genKS_underlying->Fill(rpy_lab, genpt, genCand.mass(),weight);
+          }
 
     //Finding mother:
         int mid = 0;
-        if( TMath::Abs(id) == 3122 ){
+          if( TMath::Abs(id) == 3122 ){
 
-           /*for(int i = 2; i < 15; i++){
+             /*for(int i = 2; i < 15; i++){
 
-              if( genCand.pt() > ptbins[i] && genCand.pt() < ptbins[i+1] ){
+                if( genCand.pt() > ptbins[i] && genCand.pt() < ptbins[i+1] ){
 
-                double temp = la_res[i]->GetRandom();
-                double binNumber = la_res[i]->FindBin(temp);
-                double shift = -0.3 + (binNumber*0.01);
+                  double temp = la_res[i]->GetRandom();
+                  double binNumber = la_res[i]->FindBin(temp);
+                  double shift = -0.3 + (binNumber*0.01);
 
-                genpt = genCand.pt() + shift;
+                  genpt = genCand.pt() + shift;
+                }
+                
+              }*/
+
+            if(genCand.numberOfMothers()==1){
+              const reco::Candidate * mom = genCand.mother();
+              mid = mom->pdgId();
+              if(mom->numberOfMothers()==1){
+                const reco::Candidate * mom1 = mom->mother();
+                mid = mom1->pdgId();
               }
-              
-            }*/
+            }
 
-          if(genCand.numberOfMothers()==1){
-            const reco::Candidate * mom = genCand.mother();
-            mid = mom->pdgId();
-            if(mom->numberOfMothers()==1){
-              const reco::Candidate * mom1 = mom->mother();
-              mid = mom1->pdgId();
+            if (TMath::Abs(mid) != 3322 && TMath::Abs(mid) != 3312 && TMath::Abs(mid) != 3324 && TMath::Abs(mid) != 3314 && TMath::Abs(mid) != 3334){
+
+              genLA_underlying->Fill(rpy_lab, genpt, genCand.mass(),weight);
+
             }
           }
-
-          if (TMath::Abs(mid) != 3322 && TMath::Abs(mid) != 3312 && TMath::Abs(mid) != 3324 && TMath::Abs(mid) != 3314 && TMath::Abs(mid) != 3334){
-
-            genLA_underlying->Fill(rpy_cm, genpt, genCand.mass(),weight);
-          }
-        }
      
-       }
+        }
       }
 
   } 
@@ -544,8 +551,6 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             double dzos2 = dzbest2/dzerror2;
             double dxyos2 = dxybest2/dxyerror2;
 
-            ks_y = -ks_y - 0.47;
-
             if (dau1_Nhits > 3 && dau2_Nhits > 3 && ks_eta > -2.4 && ks_eta < 2.4 && dlos > 5 && agl > 0.999 && TMath::Abs(dzos1) > 1 && 
               TMath::Abs(dzos2) > 1 && TMath::Abs(dxyos1) > 1 && TMath::Abs(dxyos2) > 1)
             {
@@ -558,7 +563,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
                   if ( temp_e < 0.015) continue;
 
                   InvMass_ks_underlying->Fill(ks_y,ks_pt,ks_mass,weight);
-
+                  //ks_rpy->Fill(ks_y);
                 
             }
 
@@ -633,8 +638,6 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             double dzos2 = dzbest2/dzerror2;
             double dxyos2 = dxybest2/dxyerror2;
 
-            la_y = -la_y - 0.47;
-
             if (dau1_Nhits > 3 && dau2_Nhits > 3 && la_eta > -2.4 && la_eta < 2.4 && dlos > 5 && agl > 0.999 && TMath::Abs(dzos1) > 1 && 
               TMath::Abs(dzos2) > 1 && TMath::Abs(dxyos1) > 1 && TMath::Abs(dxyos2) > 1)
             {
@@ -645,6 +648,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
                   if ( temp_e < 0.015) continue;
 
                   InvMass_la_underlying->Fill(la_y,la_pt,la_mass,weight);
+                  //la_rpy->Fill(la_y);
 
                   for(unsigned it=0; it<v0candidates_xi->size(); ++it){
 
@@ -724,6 +728,10 @@ V0AnalyzerHisto::beginJob()
   }
   
   XiDaughter = fs->make<TH3D>("XiDaughter",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,1.08,1.16);
+
+  //ks_rpy = fs->make<TH1D>("ks_rpy",";y",70,-3.5,3.5);
+  //la_rpy = fs->make<TH1D>("la_rpy",";y",70,-3.5,3.5);
+
   vertexDistZ = fs->make<TH1D>("vertexDistZ",";Vz;#Events",100,-15,15);
   etaDist = fs->make<TH1D>("etaDist",";eta",60,-3,3);
   eventNumber = fs->make<TH1D>("eventNumber",";event",10,0,10);
