@@ -151,10 +151,10 @@
 // class decleration
 //
 
-class V0AnalyzerHisto : public edm::EDAnalyzer {
+class V0AnalyzerHisto_pp : public edm::EDAnalyzer {
 public:
-  explicit V0AnalyzerHisto(const edm::ParameterSet&);
-  ~V0AnalyzerHisto();
+  explicit V0AnalyzerHisto_pp(const edm::ParameterSet&);
+  ~V0AnalyzerHisto_pp();
 
 
 private:
@@ -167,13 +167,14 @@ private:
   // ----------member data ---------------------------
 
   edm::InputTag trackSrc_;
-  edm::InputTag simVertexSrc_;
+
   edm::InputTag generalV0_ks_;
   edm::InputTag generalV0_la_;
   edm::InputTag generalV0_xi_;
+
   edm::InputTag genParticleSrc_;
   std::string vertexSrc_;
-  std::string jetSrc_;
+
   int multmin_;
   int multmax_;
   int mult_;
@@ -191,20 +192,7 @@ private:
   TH1D* vertexDistZ;
   TH1D* vertexReweight[8];
 
-  //TH1D* ks_res[15];
-  //TH1D* la_res[15];
-
-  TH1D* multiDist;
-  TH1D* etaDist;
-<<<<<<< HEAD
-=======
-  
-  //TH1D* ks_rpy;
-  //TH1D* la_rpy;
-
->>>>>>> 1a7d7642ea165ab39b4f81669d0d31f9c2f14a11
   TH1D* eventNumber;
-
 
 };
 
@@ -220,28 +208,26 @@ private:
 // constructors and destructor
 //
 
-V0AnalyzerHisto::V0AnalyzerHisto(const edm::ParameterSet& iConfig)
+V0AnalyzerHisto_pp::V0AnalyzerHisto_pp(const edm::ParameterSet& iConfig)
  
 {
   trackSrc_ = iConfig.getParameter<edm::InputTag>("trackSrc");
   vertexSrc_ = iConfig.getParameter<std::string>("vertexSrc");
-  simVertexSrc_ =  iConfig.getUntrackedParameter<edm::InputTag>("tpVtxSrc",edm::InputTag("mergedtruth","MergedTrackTruth"));
+
   generalV0_ks_ = iConfig.getParameter<edm::InputTag>("generalV0_ks");
   generalV0_la_ = iConfig.getParameter<edm::InputTag>("generalV0_la");
   generalV0_xi_ = iConfig.getParameter<edm::InputTag>("generalV0_xi");
-
-  jetSrc_ = iConfig.getParameter<std::string>("jetSrc");
   genParticleSrc_ = iConfig.getParameter<edm::InputTag>("genParticleSrc");
+
   multmin_ = iConfig.getUntrackedParameter<int>("multmin", 120);
   multmax_ = iConfig.getUntrackedParameter<int>("multmax", 150); 
   mult_ = iConfig.getUntrackedParameter<int>("mult",0);
-
   doGenParticle_ = iConfig.getUntrackedParameter<bool>("doGenParticle",false);
   
 }
 
 
-V0AnalyzerHisto::~V0AnalyzerHisto()
+V0AnalyzerHisto_pp::~V0AnalyzerHisto_pp()
 {
  
   // do anything here that needs to be done at desctruction time
@@ -299,7 +285,7 @@ double Angle(double px, double py, double pz, double px_d, double py_d, double p
 
 // ------------ method called to for each event  ------------
 void
-V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+V0AnalyzerHisto_pp::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
   using namespace edm;
   using namespace std;
@@ -313,7 +299,7 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   bestvzError = vtx.zError(); bestvxError = vtx.xError(); bestvyError = vtx.yError();
   
   //first selection; vertices
-    if(bestvz < -15.0 || bestvz > 15.0) return;
+  if(bestvz < -15.0 || bestvz > 15.0) return;
 
     
   Handle<reco::TrackCollection> tracks;
@@ -341,18 +327,9 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 
         if ( fabs(trk.eta()) > 2.4 || trk.pt() < 0.4  ) continue;
 
-        etaDist->Fill( trk.eta() );
-
         nTracks++;
         
   } 
-
-  //multiDist->Fill(nTracks);
-
-
-  edm::Handle<reco::PFJetCollection> jets;
-  iEvent.getByLabel( jetSrc_ , jets);
-   // jetSrc = "ak5PFJets" inputTag (string);
 
   edm::Handle<reco::VertexCompositeCandidateCollection> v0candidates_ks;
     iEvent.getByLabel(generalV0_ks_,v0candidates_ks);
@@ -366,44 +343,17 @@ V0AnalyzerHisto::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     iEvent.getByLabel(generalV0_xi_,v0candidates_xi);
     if(!v0candidates_xi.isValid()) return;
 
-if(doGenParticle_){
-
-  edm::Handle<reco::GenParticleCollection> genParticleCollection;
-      iEvent.getByLabel(genParticleSrc_, genParticleCollection);
-
-      int genTracks = 0;
-
-      for(unsigned it=0; it<genParticleCollection->size(); ++it) {
-
-        const reco::GenParticle & genCand = (*genParticleCollection)[it];
-
-        double pt = genCand.pt();
-        double eta = genCand.eta();
-        int status = genCand.status();
-        int charge = genCand.charge();
-
-
-        if( status != 1 ) continue;
-        if( charge == 0 ) continue;
-
-        if(fabs(eta) > 2.4 || pt < 0.4 ) continue;
-
-        genTracks++;
-
-      }
-}
 
 //multiplicity bins:
-//
+
 
 if ( nTracks > multmin_ && nTracks < multmax_ ){
 
   eventNumber->Fill(1);
-
   vertexDistZ->Fill( vtx.z() );
 
-  double bin = vertexReweight[mult_]->FindBin( vtx.z() );
-  double weight = vertexReweight[mult_]->GetBinContent( bin );
+  //double bin = vertexReweight[mult_]->FindBin( vtx.z() );
+  //double weight = vertexReweight[mult_]->GetBinContent( bin );
   
    if( doGenParticle_ ){
 
@@ -445,7 +395,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
 
               }*/
 
-              genKS_underlying->Fill(rpy_lab, genpt, genCand.mass(),weight);
+              genKS_underlying->Fill(rpy_lab, genpt, genCand.mass());
           }
 
     //Finding mother:
@@ -476,7 +426,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
 
             if (TMath::Abs(mid) != 3322 && TMath::Abs(mid) != 3312 && TMath::Abs(mid) != 3324 && TMath::Abs(mid) != 3314 && TMath::Abs(mid) != 3334){
 
-              genLA_underlying->Fill(rpy_lab, genpt, genCand.mass(),weight);
+              genLA_underlying->Fill(rpy_lab, genpt, genCand.mass());
 
             }
           }
@@ -492,8 +442,8 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             const reco:: Candidate * d1 = trk.daughter(0);
             const reco:: Candidate * d2 = trk.daughter(1); 
 
-            auto dau1 = d1->get<reco::TrackRef>();
-            auto dau2 = d2->get<reco::TrackRef>();
+            const reco:: TrackRef dau1 = d1->get<reco::TrackRef>();
+            const reco:: TrackRef dau2 = d2->get<reco::TrackRef>();
      
             double px_dau1 = d1->px();
             double py_dau1 = d1->py();
@@ -565,11 +515,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
                   if ((temp_reverse < 1.125683 && temp_reverse > 1.105683)) continue;
                   if ( temp_e < 0.015) continue;
 
-                  InvMass_ks_underlying->Fill(ks_y,ks_pt,ks_mass,weight);
-<<<<<<< HEAD
-=======
-                  //ks_rpy->Fill(ks_y);
->>>>>>> 1a7d7642ea165ab39b4f81669d0d31f9c2f14a11
+                  InvMass_ks_underlying->Fill(ks_y,ks_pt,ks_mass);
                 
             }
 
@@ -582,8 +528,8 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             const reco:: Candidate * d1 = trk.daughter(0);
             const reco:: Candidate * d2 = trk.daughter(1); 
 
-            auto dau1 = d1->get<reco::TrackRef>();
-            auto dau2 = d2->get<reco::TrackRef>();
+            const reco:: TrackRef dau1 = d1->get<reco::TrackRef>();
+            const reco:: TrackRef dau2 = d2->get<reco::TrackRef>();
      
             double px_dau1 = d1->px();
             double py_dau1 = d1->py();
@@ -653,11 +599,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
               if ( (temp < 0.517614 && temp > 0.477614) ) continue;
                   if ( temp_e < 0.015) continue;
 
-                  InvMass_la_underlying->Fill(la_y,la_pt,la_mass,weight);
-<<<<<<< HEAD
-=======
-                  //la_rpy->Fill(la_y);
->>>>>>> 1a7d7642ea165ab39b4f81669d0d31f9c2f14a11
+                  InvMass_la_underlying->Fill(la_y,la_pt,la_mass);
 
                   for(unsigned it=0; it<v0candidates_xi->size(); ++it){
 
@@ -683,17 +625,13 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
 
                           if ( trk.mass() > 1.31486 && trk.mass() < 1.33486 ){
 
-                            XiDaughter->Fill(la_y,la_pt,la_mass,weight);
+                            XiDaughter->Fill(la_y,la_pt,la_mass);
 
-                    }
-                      }
                           }
-
+                      }
+                    }
                   }
-
             }
-
-
         }  
 
   }
@@ -702,7 +640,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
 }
 // ------------ method called once each job just before starting event loop  ------------
 void 
-V0AnalyzerHisto::beginJob()
+V0AnalyzerHisto_pp::beginJob()
 {
   edm::Service<TFileService> fs;
     
@@ -717,40 +655,39 @@ V0AnalyzerHisto::beginJob()
 
   }*/
 
-  edm::FileInPath fip2("V0Analyzertest/V0Analyzer/data/vertex_epos_multDepend.root");
-  TFile f2(fip2.fullPath().c_str(),"READ");
+  //edm::FileInPath fip2("V0Analyzertest/V0Analyzer/data/vertex_epos_multDepend.root");
+  //TFile f2(fip2.fullPath().c_str(),"READ");
   
-  for(int mult = 0; mult < 8; mult++){
+  //for(int mult = 0; mult < 8; mult++){
 
-    vertexReweight[mult] = (TH1D*)f2.Get( Form("data_%d",mult+1) );
+    //vertexReweight[mult] = (TH1D*)f2.Get( Form("data_%d",mult+1) );
 
-  }
+  //}
   
-  InvMass_ks_underlying = fs->make<TH3D>("InvMass_ks_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,0.44,0.56);
-  InvMass_la_underlying = fs->make<TH3D>("InvMass_la_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,1.08,1.16);
+  InvMass_ks_underlying = fs->make<TH3D>("InvMass_ks_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",50,-2.5,2.5,120,0,12,360,0.44,0.56);
+  InvMass_la_underlying = fs->make<TH3D>("InvMass_la_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",50,-2.5,2.5,120,0,12,360,1.08,1.16);
   
   if(doGenParticle_){
 
-    genKS_underlying = fs->make<TH3D>("genKS_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,0.44,0.56);
-    genLA_underlying = fs->make<TH3D>("genLA_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,1.08,1.16);
+    genKS_underlying = fs->make<TH3D>("genKS_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",50,-2.5,2.5,120,0,12,360,0.44,0.56);
+    genLA_underlying = fs->make<TH3D>("genLA_underlying",";y;pT(GeV/c);mass(GeV/c^{2})",50,-2.5,2.5,120,0,12,360,1.08,1.16);
   
   }
   
-  XiDaughter = fs->make<TH3D>("XiDaughter",";y;pT(GeV/c);mass(GeV/c^{2})",70,-3.5,3.5,120,0,12,360,1.08,1.16);
+  XiDaughter = fs->make<TH3D>("XiDaughter",";y;pT(GeV/c);mass(GeV/c^{2})",50,-2.5,2.5,120,0,12,360,1.08,1.16);
 
-  //ks_rpy = fs->make<TH1D>("ks_rpy",";y",70,-3.5,3.5);
-  //la_rpy = fs->make<TH1D>("la_rpy",";y",70,-3.5,3.5);
+  //ks_rpy = fs->make<TH1D>("ks_rpy",";y",50,-2.5,2.5);
+  //la_rpy = fs->make<TH1D>("la_rpy",";y",50,-2.5,2.5);
 
   vertexDistZ = fs->make<TH1D>("vertexDistZ",";Vz;#Events",100,-15,15);
-  etaDist = fs->make<TH1D>("etaDist",";eta",60,-3,3);
   eventNumber = fs->make<TH1D>("eventNumber",";event",10,0,10);
 
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void 
-V0AnalyzerHisto::endJob() {
+V0AnalyzerHisto_pp::endJob() {
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(V0AnalyzerHisto);
+DEFINE_FWK_MODULE(V0AnalyzerHisto_pp);
