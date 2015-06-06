@@ -188,10 +188,10 @@ private:
   bool doReverseReco_;
   bool doMomSmear_;
   bool doReweight_;
+  bool doEPOSreweight_;
   
   TH3D* InvMass_ks_underlying;
   TH3D* InvMass_la_underlying;
-
   TH3D* XiDaughter;
 
   TH3D* genKS_underlying;
@@ -208,6 +208,11 @@ private:
 
   TH2D* ctau_ks;
   TH2D* ctau_la;
+  TH2D* ctau_antila;
+
+  TH2D* fakectau_ks;
+  TH2D* fakectau_la;
+  TH2D* fakectau_antila;
 
   TH1D* vertexDistZ;
   TH1D* vertexReweight[8];
@@ -264,7 +269,7 @@ V0AnalyzerHisto::V0AnalyzerHisto(const edm::ParameterSet& iConfig)
   doReverseReco_ = iConfig.getUntrackedParameter<bool>("doReverseReco",false);
   doMomSmear_ = iConfig.getUntrackedParameter<bool>("doMomSmear",false);
   doReweight_ = iConfig.getUntrackedParameter<bool>("doReweight",false);
-
+  doEPOSreweight_ = iConfig.getUntrackedParameter<bool>("doEPOSreweight",true);
   
 }
 
@@ -593,6 +598,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             }
 
             ks_etaPt->Fill(ks_pt, ks_eta);
+            
             transverseDCA_ks->Fill(ks_y,dxyos1,totalweight);
             transverseDCA_ks->Fill(ks_y,dxyos2,totalweight);
             longDCA_ks->Fill(ks_y,dzos1,totalweight);
@@ -601,7 +607,6 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             pointAngle_ks->Fill(ks_y,agl,totalweight);
 
             double ctau = (3*dl*ks_mass)/ks_p;
-            ctau_ks->Fill(ks_y,ctau,totalweight);
 
             if( doPromptReco_ ){
 
@@ -633,8 +638,17 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
                   if ( temp_e < 0.015) continue;
 
                   InvMass_ks_underlying->Fill(ks_y,ks_pt,ks_mass,weight);
-                  
-                
+
+                  if( !doReweight_ )
+                      value1 = 1.0;
+
+                  if( ks_mass > 0.48 && ks_mass < 0.51 ){
+                    ctau_ks->Fill(ks_pt,ctau,value1);
+                  }
+                  else if( ks_mass < 0.48 || ks_mass > 0.51 ){
+                    fakectau_ks->Fill(ks_pt,ctau,value1);
+                  }
+
             }
 
         }
@@ -665,6 +679,7 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
             double la_eta = trk.eta();
             double la_y = trk.rapidity();
             double la_p = trk.p();
+            double IDnumber = trk.pdgId();
         
             //PAngle
             double secvz = trk.vz();
@@ -711,14 +726,13 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
 
             double value3 = la_etaPtreweigh->GetBinContent( la_etaPtreweigh->FindBin(la_pt,la_eta) );
             
-            double totalweight = value3*value2*weight;
+            /*double totalweight = value3*value2*weight;
 
             if( !doReweight_ ){
                 totalweight = 1.0;
-            }
+            }*/
 
             double ctau = (3*dl*la_mass)/la_p;
-            ctau_la->Fill(la_y,ctau,totalweight);
 
             la_etaPt->Fill(la_pt,la_eta);
 
@@ -750,6 +764,28 @@ if ( nTracks > multmin_ && nTracks < multmax_ ){
                   if ( temp_e < 0.015) continue;
 
                   InvMass_la_underlying->Fill(la_y,la_pt,la_mass,weight);
+
+                  if( !doReweight_ )
+                      value3 = 1.0;
+                  
+                  if( la_mass > 1.11 && la_mass < 1.13 ){
+
+                    if( IDnumber == 3122 ){
+                      ctau_la->Fill(la_pt,ctau,value3);
+                    }
+                    else if( IDnumber == -3122 ){
+                      ctau_antila->Fill(la_pt,ctau,value3);
+                    }
+                  }
+                  else if( la_mass < 1.11 || la_mass > 1.13 ){
+
+                    if( IDnumber == 3122 ){
+                      fakectau_la->Fill(la_pt,ctau,value3);
+                    }
+                    else if( IDnumber == -3122 ){
+                      fakectau_antila->Fill(la_pt,ctau,value3);
+                    }
+                  }
 
                   for(unsigned it=0; it<v0candidates_xi->size(); ++it){
 
@@ -809,14 +845,32 @@ V0AnalyzerHisto::beginJob()
 
   }
 
-  edm::FileInPath fip2("V0Analyzertest/V0Analyzer/data/vertex_epos_multDepend.root");
-  TFile f2(fip2.fullPath().c_str(),"READ");
-  
-  for(int mult = 0; mult < 8; mult++){
+  if( doEPOSreweight_ ){
 
-    vertexReweight[mult] = (TH1D*)f2.Get( Form("data_%d",mult+1) );
+    edm::FileInPath fip2("V0Analyzertest/V0Analyzer/data/vertex_epos_multDepend.root");
+    TFile f2(fip2.fullPath().c_str(),"READ");
+    
+    for(int mult = 0; mult < 8; mult++){
+
+      vertexReweight[mult] = (TH1D*)f2.Get( Form("data_%d",mult+1) );
+
+    }
 
   }
+
+  else{
+
+    edm::FileInPath fip2("V0Analyzertest/V0Analyzer/data/vertex_hijing_multDepend.root");
+    TFile f2(fip2.fullPath().c_str(),"READ");
+    
+    for(int mult = 0; mult < 8; mult++){
+
+      vertexReweight[mult] = (TH1D*)f2.Get( Form("data_%d",mult+1) );
+
+    }
+  }
+
+
 
   edm::FileInPath fip3("V0Analyzertest/V0Analyzer/data/NtrkReweight.root");
   TFile f3(fip3.fullPath().c_str(),"READ");
@@ -855,8 +909,13 @@ V0AnalyzerHisto::beginJob()
   ks_etaPt = fs->make<TH2D>("ks_etaPt",";pt;eta",120,0,12,50,-2.5,2.5);
   la_etaPt = fs->make<TH2D>("la_etaPt",";pt;eta",120,0,12,50,-2.5,2.5);
 
-  ctau_ks = fs->make<TH2D>("ctau_ks",";y;ctau",50,-2.5,2.5,40,0,20);
-  ctau_la = fs->make<TH2D>("ctau_la",";y;ctau",50,-2.5,2.5,40,0,20);
+  ctau_ks = fs->make<TH2D>("ctau_ks",";pT;ctau",120,0,12,40,0,20);
+  ctau_la = fs->make<TH2D>("ctau_la",";pT;ctau",120,0,12,80,0,40);
+  ctau_antila = fs->make<TH2D>("ctau_antila",";pT;ctau",120,0,12,80,0,40);
+
+  fakectau_ks = fs->make<TH2D>("fakectau_ks",";pT;ctau",120,0,12,40,0,20);
+  fakectau_la = fs->make<TH2D>("fakectau_la",";pT;ctau",120,0,12,80,0,40);
+  fakectau_antila = fs->make<TH2D>("fakectau_antila",";pT;ctau",120,0,12,80,0,40);
 
 }
 
